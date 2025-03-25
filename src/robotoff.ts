@@ -2,12 +2,25 @@ import createClient from "openapi-fetch";
 
 import { paths } from "./schemas/robotoff";
 import { USER_AGENT } from "./consts";
+import { formBody } from "./formbody";
 
 type InsightQuery = paths["/insights"]["get"]["parameters"]["query"];
 type InsightResponse =
   paths["/insights"]["get"]["responses"]["200"]["content"]["application/json"];
 type AnnotateBody =
   paths["/insights/annotate"]["post"]["requestBody"]["content"]["application/x-www-form-urlencoded"];
+
+export type Question = {
+  insight_id: string;
+  question: string;
+  image_url?: string;
+  value?: string;
+};
+
+type QuestionsResponse = {
+  status?: "found" | "no_questions";
+  questions?: Question[];
+};
 
 export class Robotoff {
   /** The fetch function used for every request */
@@ -28,18 +41,25 @@ export class Robotoff {
   }
 
   async annotate(body: AnnotateBody) {
+    const stringifyValues = (body: AnnotateBody) => {
+      return Object.fromEntries(
+        Object.entries(body).map(([key, value]) => [key, String(value)]),
+      );
+    };
     return this.raw.POST("/insights/annotate", {
       body: body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      bodySerializer: (body) => formBody(stringifyValues(body)),
     });
   }
 
-  async questionsByProductCode(code: number) {
+  async questionsByProductCode(code: number): Promise<QuestionsResponse> {
     const result = await this.raw.GET("/questions/{barcode}", {
       params: {
         path: { barcode: code },
       },
     });
-    return result.data;
+    return result.data as QuestionsResponse;
   }
 
   async insightDetail(id: string) {
