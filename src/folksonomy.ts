@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 
 import { paths, components } from "./schemas/folksonomy";
 import { formBody as formBodySerializer } from "./formbody";
-import { ApiError } from "./error";
+import { ApiError, UNKNOWN_API_ERROR } from "./error";
 import { DEFAULT_FOLKSONOMY_API_URL, USER_AGENT } from "./consts";
 
 export type FolksonomyTag = components["schemas"]["ProductTag"];
@@ -78,11 +78,15 @@ export class Folksonomy {
    *
    * @returns if the tag was added or updated
    */
-  async putTag(tag: FolksonomyTag): Promise<boolean> {
+  async putTag(tag: FolksonomyTag): Promise<ApiError | null> {
     this.validateAuthToken();
 
     const res = await this.raw.PUT("/product", { body: tag });
-    return res.response.status === 200;
+
+    if (res.response.status !== 200) {
+      return (res.error as ApiError) ?? UNKNOWN_API_ERROR;
+    }
+    return null;
   }
 
   /**
@@ -108,14 +112,17 @@ export class Folksonomy {
    *
    * @returns if the tag was added or updated
    */
-  async addTag(tag: FolksonomyTag): Promise<boolean> {
+  async addTag(tag: FolksonomyTag): Promise<ApiError | null> {
     this.validateAuthToken();
 
     const res = await this.raw.POST("/product", {
       body: tag,
     });
 
-    return res.response.status === 200;
+    if (res.response.status !== 200) {
+      return (res.error as ApiError) ?? UNKNOWN_API_ERROR;
+    }
+    return null;
   }
 
   /**
@@ -130,7 +137,9 @@ export class Folksonomy {
    *
    * @returns if the tag was deleted
    */
-  async removeTag(tag: FolksonomyTag & { version: number }): Promise<boolean> {
+  async removeTag(
+    tag: FolksonomyTag & { version: number },
+  ): Promise<ApiError | null> {
     this.validateAuthToken();
 
     const res = await this.raw.DELETE("/product/{product}/{k}", {
@@ -140,7 +149,10 @@ export class Folksonomy {
       },
     });
 
-    return res.response.status === 200;
+    if (res.response.status !== 200) {
+      return (res.error as ApiError) ?? UNKNOWN_API_ERROR;
+    }
+    return null;
   }
 
   /**
