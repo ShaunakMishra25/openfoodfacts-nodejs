@@ -22,7 +22,7 @@ import {
   TaxoNode,
   Taxonomy,
 } from "./taxonomy/types";
-import { USER_AGENT } from "./consts";
+import { BackendType, BACKEND_DOMAINS, BACKEND_NAMES } from "./consts";
 
 export type ProductV2 = componentsv2["schemas"]["Product"];
 export type SearchResultV2 = externalv2["responses/search_for_products.yaml"];
@@ -37,12 +37,18 @@ export * from "./prices";
 export * from "./nutripatrol";
 export * from "./search";
 
-export type OpenFoodFactsOptions = { country?: string; host?: string };
+export type OpenFoodFactsOptions = {
+  type?: BackendType;
+  country?: string;
+  host?: string;
+};
 
 /** Wrapper of OFF API */
 export class OpenFoodFacts {
   private readonly fetch: typeof global.fetch;
   private readonly baseUrl: string;
+  private readonly backendType?: BackendType;
+  private readonly customUserAgent: string;
 
   /** Raw v2 client */
   readonly rawv2: ReturnType<typeof createClient<pathsv2>>;
@@ -52,26 +58,46 @@ export class OpenFoodFacts {
 
   /**
    * Create OFF object
+   * @param fetch - Fetch implementation to use
    * @param options - Options for the OFF Object
    */
   constructor(
     fetch: typeof global.fetch,
     options: OpenFoodFactsOptions = { country: "world" },
   ) {
-    if (options.host && options.country) {
-      throw new Error("You must provide either `host` or `country`, not both.");
+    if (
+      (options.host && options.country) ||
+      (options.type && options.country)
+    ) {
+      throw new Error(
+        "You must provide either `host`, `type`, or `country`, not multiple.",
+      );
     }
 
-    this.baseUrl =
-      options.host ?? `https://${options.country}.openfoodfacts.org`;
-
+    this.backendType = options.type;
     this.fetch = fetch;
+
+    if (options.host != null) {
+      this.baseUrl = options.host;
+    } else if (options.type != null) {
+      const domain = BACKEND_DOMAINS[options.type];
+      this.baseUrl = `https://world.${domain}`;
+    } else {
+      this.baseUrl = `https://${options.country}.openfoodfacts.org`;
+    }
+
+    if (this.backendType != null) {
+      const backendName = BACKEND_NAMES[this.backendType];
+      this.customUserAgent = `${backendName} - NodeJS ${require("../package.json").version}`;
+    } else {
+      this.customUserAgent = `OpenFoodFacts - NodeJS ${require("../package.json").version}`;
+    }
 
     this.rawv2 = createClient<pathsv2>({
       fetch: this.fetch,
       baseUrl: this.baseUrl,
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": this.customUserAgent,
       },
     });
 
@@ -84,7 +110,7 @@ export class OpenFoodFacts {
   ): Promise<T> {
     const res = await fetch(
       `${this.baseUrl}/api/v2/taxonomy?tagtype=${taxo}&tags=${entry}`,
-      { headers: { "User-Agent": USER_AGENT } },
+      { headers: { "User-Agent": this.customUserAgent } },
     );
 
     return (await res.json()) as T;
