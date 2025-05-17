@@ -1,11 +1,7 @@
 # Open Food Facts - JS SDK
 
-<a href="https://www.npmjs.com/package/@openfoodfacts/openfoodfacts-nodejs">
-<img alt="NPM Version" src="https://img.shields.io/npm/v/%40openfoodfacts%2Fopenfoodfacts-nodejs">
-</a>
-<a href="https://openfoodfacts.github.io/openfoodfacts-nodejs/">
-  <img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Documentation">
-</a>
+<a href="https://www.npmjs.com/package/@openfoodfacts/openfoodfacts-nodejs"><img alt="NPM Version" src="https://img.shields.io/npm/v/%40openfoodfacts%2Fopenfoodfacts-nodejs"></a>
+<a href="https://openfoodfacts.github.io/openfoodfacts-nodejs/"><img src="https://img.shields.io/badge/docs-latest-blue.svg" alt="Documentation"></a>
 
 This is the official JS/TS SDK for the Open Food Facts API.
 
