@@ -1,5 +1,9 @@
 # Open Food Facts - JS SDK
 
+[![NPM Version](https://img.shields.io/npm/v/%40openfoodfacts%2Fopenfoodfacts-nodejs)](https://www.npmjs.com/package/@openfoodfacts/openfoodfacts-nodejs)
+
+[![Documentation](https://img.shields.io/badge/docs-latest-blue.svg)](https://openfoodfacts.github.io/openfoodfacts-nodejs/)
+
 This is the official JS/TS SDK for the Open Food Facts API.
 
 ## Installation
