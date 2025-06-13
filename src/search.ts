@@ -1,19 +1,20 @@
-import createClient from "openapi-fetch";
 import type { paths } from "$schemas/search";
+import createClient from "openapi-fetch";
 import { USER_AGENT } from "./consts";
 
 const SEARCH_BASE_URL = "https://search.openfoodfacts.org";
 
-type DocumentQuery =
+export type DocumentQuery =
   paths["/document/{identifier}"]["get"]["parameters"]["query"];
 
-type SearchQuery = paths["/search"]["get"]["parameters"]["query"];
-type SearchBody =
+export type SearchQuery = paths["/search"]["get"]["parameters"]["query"];
+export type SearchBody =
   paths["/search"]["post"]["requestBody"]["content"]["application/json"];
 
-type AutocompleteQuery = paths["/autocomplete"]["get"]["parameters"]["query"];
+export type AutocompleteQuery =
+  paths["/autocomplete"]["get"]["parameters"]["query"];
 
-type HtmlSearchQuery = paths["/off-test"]["get"]["parameters"]["query"];
+export type HtmlSearchQuery = paths["/off-test"]["get"]["parameters"]["query"];
 
 export class SearchApi {
   private readonly client: ReturnType<typeof createClient<paths>>;
