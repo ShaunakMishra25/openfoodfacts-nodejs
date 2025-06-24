@@ -61,6 +61,13 @@ export class OpenFoodFacts {
    * @param fetch - Fetch implementation to use
    * @param options - Options for the OFF Object
    */
+  getProductImageFolder(productCode: string): string {
+    const chunks = productCode.match(/.{1,3}/g);
+    if (!chunks) return "";
+
+    return `https://images.openfoodfacts.org/images/products/${chunks.join("/")}/`;
+  }
+
   constructor(
     fetch: typeof global.fetch,
     options: OpenFoodFactsOptions = { country: "world" },
@@ -222,6 +229,7 @@ export class OpenFoodFacts {
       params: { query: { fields, sort_by: sortBy } },
     });
 
+    
     return res.data;
   }
 }
