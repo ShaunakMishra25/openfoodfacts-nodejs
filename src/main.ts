@@ -1,5 +1,4 @@
 import createClient from "openapi-fetch";
-
 import {
   paths as pathsv2,
   components as componentsv2,
@@ -22,7 +21,12 @@ import {
   TaxoNode,
   Taxonomy,
 } from "./taxonomy/types";
-import { BackendType, BACKEND_DOMAINS, BACKEND_NAMES } from "./consts";
+import {
+  BackendType,
+  BACKEND_DOMAINS,
+  BACKEND_NAMES,
+  PRODUCT_IMAGE_BASE_URL as IMAGE_BASE_URL,
+} from "./consts";
 
 export type ProductV2 = componentsv2["schemas"]["Product"];
 export type SearchResultV2 = externalv2["responses/search_for_products.yaml"];
@@ -127,33 +131,43 @@ export class OpenFoodFacts {
   getBrands(): Promise<Taxonomy<Brand>> {
     return this.getTaxo<Brand>("brands");
   }
+
   getLanguages(): Promise<Taxonomy<Language>> {
     return this.getTaxo<Language>("languages");
   }
+
   getLabels(): Promise<Taxonomy<Label>> {
     return this.getTaxo<Label>("labels");
   }
+
   getAdditives(): Promise<Taxonomy<Additive>> {
     return this.getTaxo<Additive>("additives");
   }
+
   getAllergens(): Promise<Taxonomy<Allergen>> {
     return this.getTaxo<Allergen>("allergens");
   }
+
   getCategories(): Promise<Taxonomy<Category>> {
     return this.getTaxo<Category>("categories");
   }
+
   getCountries(): Promise<Taxonomy<Country>> {
     return this.getTaxo<Country>("countries");
   }
+
   getIngredients(): Promise<Taxonomy<Ingredient>> {
     return this.getTaxo<Ingredient>("ingredients");
   }
+
   getPackagings(): Promise<Taxonomy<Ingredient>> {
     return this.getTaxo<Ingredient>("packaging");
   }
+
   getStates(): Promise<Taxonomy<State>> {
     return this.getTaxo<State>("states");
   }
+
   getStores(): Promise<Taxonomy<Store>> {
     return this.getTaxo<Store>("stores");
   }
@@ -204,14 +218,9 @@ export class OpenFoodFacts {
       },
     });
 
-    if (!res.data?.product) {
-      return null;
-    } else if (!res.data?.product?.images) {
-      return null;
-    }
+    if (!res.data?.product?.images) return null;
 
-    const imgObj = res.data?.product?.images;
-    return Object.keys(imgObj);
+    return Object.keys(res.data.product.images);
   }
 
   async search(
@@ -224,6 +233,21 @@ export class OpenFoodFacts {
 
     return res.data;
   }
+}
+
+/**
+ * Get base folder URL for a product's image
+ * @param productCode Barcode of the product
+ * @returns Folder path for the image files
+ */
+export function getProductImageFolder(productCode: string): string {
+  if (!productCode) return "";
+  // All but last 4 digits in 3-digit chunks, last 4 as one chunk
+  const prefix = productCode.slice(0, -4);
+  const suffix = productCode.slice(-4);
+  const chunks: string[] = prefix.match(/.{1,3}/g) || [];
+  if (suffix) chunks.push(suffix);
+  return IMAGE_BASE_URL + "/" + chunks.join("/") + "/";
 }
 
 export default OpenFoodFacts;
