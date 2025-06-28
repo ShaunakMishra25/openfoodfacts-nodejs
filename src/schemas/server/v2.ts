@@ -1446,7 +1446,7 @@ export interface external {
   "schemas/tags_parameters.yaml": {
     /**
      * @description The additives_tags in english of product(s) you are searching for.
-     * The [OFF App](https://world.openfoodfacts.org/additives) has a list of possible values for `additives`.
+     * The [OFF App](https://world.openfoodfacts.org/ingredients?facet=additives) has a list of possible values for `additives`.
      */
     additives_tags?: unknown;
     /**
