@@ -14,34 +14,35 @@ jobs:
       matrix:
         node-version: [20.x, 22.x, 23.x, 24.x]
 
+    env:
+      # the version we use to build docs and coverage reports
+      STD_NODE_VERSION: ${{ 22.x }}
+
     steps:
-      # Checkout the repository
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - run: npm install -g corepack --force
-      - run: corepack enable
+      - name: Install and enable Corepack
+        run: |
+          npm install -g corepack --force
+          corepack enable
 
-      # Setup Node.js environment
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
 
-      # Install dependencies
       - name: Install dependencies
         run: yarn install --immutable
 
-      # Run eslint
-      - name: Run ESLint
+      - name: Lint code
         run: yarn lint
 
-      # Run prettier check
-      - name: Run Prettier
+      - name: Check code formatting
         run: yarn format
 
-      # Run build
-      - name: Build project
+      - name: Build
         run: yarn build
 
       # Run tests
@@ -50,12 +51,12 @@ jobs:
 
       # Build documentation only for Node.js 22.x
       - name: Build documentation
-        if: matrix.node-version == '22.x'
+        if: matrix.node-version == env.STD_NODE_VERSION
         run: yarn build:docs
 
       # Upload documentation artifact (only for Node.js 22.x)
       - name: Upload docs
-        if: matrix.node-version == '22.x'
+        if: matrix.node-version == env.STD_NODE_VERSION
         uses: actions/upload-pages-artifact@v3
         with:
           path: "docs"
@@ -79,3 +80,40 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  coverage:
+    name: Coverage Report
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install and enable Corepack
+        run: |
+          npm install -g corepack --force
+          corepack enable
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: "yarn"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run tests with coverage
+        run: yarn test --coverage --reporters=text > coverage.txt
+
+      - name: Prepare coverage report in markdown
+        uses: fingerprintjs/action-coverage-report-md@v2
+        id: coverage
+        with:
+          textReportPath: "./coverage.txt"
+          srcBasePath: "./src"
+
+      - name: Add coverage report to the job summary
+        run: |
+          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.coverage.outputs.markdownReport }}" >> $GITHUB_STEP_SUMMARY
