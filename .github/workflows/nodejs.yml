@@ -104,16 +104,9 @@ jobs:
         run: yarn install --immutable
 
       - name: Run tests with coverage
-        run: yarn test --coverage --reporters=text > coverage.txt
+        run: yarn test --coverage
 
-      - name: Prepare coverage report in markdown
-        uses: fingerprintjs/action-coverage-report-md@v2
-        id: coverage
+      - name: Write coverage report to GitHub Summary
+        uses: livewing/lcov-job-summary@v1.2.0
         with:
-          textReportPath: "./coverage.txt"
-          srcBasePath: "./src"
-
-      - name: Add coverage report to the job summary
-        run: |
-          echo "## Code Coverage" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.coverage.outputs.markdownReport }}" >> $GITHUB_STEP_SUMMARY
+          lcov: "coverage/lcov.info"
