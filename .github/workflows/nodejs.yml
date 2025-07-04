@@ -18,15 +18,15 @@ jobs:
       # Checkout the repository
       - uses: actions/checkout@v4
 
+      - run: npm install -g corepack --force
+      - run: corepack enable
+
       # Setup Node.js environment
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
-
-      - run: npm install -g corepack --force
-      - run: corepack enable
 
       # Install dependencies
       - name: Install dependencies
