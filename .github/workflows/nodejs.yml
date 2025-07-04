@@ -16,7 +16,7 @@ jobs:
 
     env:
       # the version we use to build docs and coverage reports
-      STD_NODE_VERSION: ${{ 22.x }}
+      STD_NODE_VERSION: "22.x"
 
     steps:
       - name: Checkout code
