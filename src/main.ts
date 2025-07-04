@@ -45,6 +45,9 @@ export type OpenFoodFactsOptions = {
   type?: BackendType;
   country?: string;
   host?: string;
+
+  accessToken?: string;
+  onAccessTokenExpired?: () => string | Promise<string>;
 };
 
 /** Wrapper of OFF API */
@@ -53,6 +56,7 @@ export class OpenFoodFacts {
   private readonly baseUrl: string;
   private readonly backendType?: BackendType;
   private readonly customUserAgent: string;
+  private accessToken?: string;
 
   /** Raw v2 client */
   readonly rawv2: ReturnType<typeof createClient<pathsv2>>;
@@ -69,6 +73,25 @@ export class OpenFoodFacts {
     fetch: typeof global.fetch,
     options: OpenFoodFactsOptions = { country: "world" },
   ) {
+    this.validateOptions(options);
+    this.backendType = options.type;
+    this.baseUrl = this.createBaseUrl(options);
+    this.customUserAgent = this.createUserAgent();
+    this.accessToken = options.accessToken;
+    this.fetch = this.createFetchWrapper(fetch, options);
+
+    this.rawv2 = createClient<pathsv2>({
+      fetch: this.fetch,
+      baseUrl: this.baseUrl,
+    });
+
+    this.robotoff = new Robotoff(fetch);
+  }
+
+  /**
+   * Validates constructor options for mutual exclusivity
+   */
+  private validateOptions(options: OpenFoodFactsOptions): void {
     if (
       (options.host && options.country) ||
       (options.type && options.country)
@@ -77,44 +100,159 @@ export class OpenFoodFacts {
         "You must provide either `host`, `type`, or `country`, not multiple.",
       );
     }
+  }
 
-    this.backendType = options.type;
-    this.fetch = fetch;
-
+  /**
+   * Creates the base URL based on options
+   */
+  private createBaseUrl(options: OpenFoodFactsOptions): string {
     if (options.host != null) {
-      this.baseUrl = options.host;
-    } else if (options.type != null) {
-      const domain = BACKEND_DOMAINS[options.type];
-      this.baseUrl = `https://world.${domain}`;
-    } else {
-      this.baseUrl = `https://${options.country}.openfoodfacts.org`;
+      return options.host;
     }
+
+    if (options.type != null) {
+      const domain = BACKEND_DOMAINS[options.type];
+      return `https://world.${domain}`;
+    }
+
+    return `https://${options.country || "world"}.openfoodfacts.org`;
+  }
+
+  /**
+   * Creates the User-Agent string based on backend type
+   */
+  private createUserAgent(): string {
+    const version = require("../package.json").version;
 
     if (this.backendType != null) {
       const backendName = BACKEND_NAMES[this.backendType];
-      this.customUserAgent = `${backendName} - NodeJS ${require("../package.json").version}`;
-    } else {
-      this.customUserAgent = `OpenFoodFacts - NodeJS ${require("../package.json").version}`;
+      return `${backendName} - NodeJS ${version}`;
     }
 
-    this.rawv2 = createClient<pathsv2>({
-      fetch: this.fetch,
-      baseUrl: this.baseUrl,
-      headers: {
-        "User-Agent": this.customUserAgent,
-      },
-    });
+    return `OpenFoodFacts - NodeJS ${version}`;
+  }
 
-    this.robotoff = new Robotoff(fetch);
+  /**
+   * Validates access token format and expiration
+   */
+  private validateAccessToken(token: string): void {
+    if (typeof token !== "string") {
+      throw new Error("Access token must be a string.");
+    }
+
+    if (token.length === 0) {
+      throw new Error("Access token cannot be an empty string.");
+    }
+
+    if (!/^[A-Za-z0-9-_.]+$/.test(token)) {
+      throw new Error(
+        "Access token can only contain alphanumeric characters, dashes, underscores, and periods.",
+      );
+    }
+
+    if (this.isTokenExpired(token)) {
+      throw new Error("Access token is expired.");
+    }
+  }
+
+  /**
+   * Creates a fetch wrapper with User-Agent and optional token handling
+   */
+  private createFetchWrapper(
+    fetch: typeof global.fetch,
+    options: OpenFoodFactsOptions,
+  ): typeof global.fetch {
+    // Base fetch wrapper with User-Agent
+    let wrappedFetch = this.createUserAgentFetch(fetch);
+
+    // Add token handling if access token is provided
+    if (options.accessToken != null) {
+      this.validateAccessToken(options.accessToken);
+      wrappedFetch = this.createTokenAwareFetch(wrappedFetch, options);
+    }
+
+    return wrappedFetch;
+  }
+
+  /**
+   * Creates a fetch wrapper that adds User-Agent header
+   */
+  private createUserAgentFetch(
+    fetch: typeof global.fetch,
+  ): typeof global.fetch {
+    return (url: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      headers.set("User-Agent", this.customUserAgent);
+      return fetch(url, { ...init, headers });
+    };
+  }
+
+  /**
+   * Creates a fetch wrapper that handles token refresh and authorization
+   */
+  private createTokenAwareFetch(
+    fetch: typeof global.fetch,
+    options: OpenFoodFactsOptions,
+  ): typeof global.fetch {
+    return async (url: RequestInfo | URL, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+
+      if (this.accessToken == null) {
+        throw new Error("Access token was first specified and now is null.");
+      }
+
+      if (this.isTokenExpired(this.accessToken)) {
+        this.accessToken = await this.refreshAccessToken(options);
+      }
+
+      headers.set("Authorization", `Bearer ${this.accessToken}`);
+      return fetch(url, { ...init, headers });
+    };
+  }
+
+  /**
+   * Refreshes the access token using the provided callback
+   */
+  private async refreshAccessToken(
+    options: OpenFoodFactsOptions,
+  ): Promise<string> {
+    if (options.onAccessTokenExpired == null) {
+      throw new Error(
+        "Access token expired and no handler provided to refresh it." +
+          " You should provide `onAccessTokenExpired` option or wrap the fetch function to handle token expiration.",
+      );
+    }
+
+    const newAccessToken = await options.onAccessTokenExpired();
+
+    if (newAccessToken == null) {
+      throw new Error(
+        "onAccessTokenExpired handler did not return a new access token.",
+      );
+    }
+
+    return newAccessToken;
+  }
+
+  private isTokenExpired(token: string) {
+    const parts = token.split(".");
+    if (parts.length !== 3) {
+      throw new Error("Invalid JWT token format");
+    }
+    const payload = JSON.parse(
+      Buffer.from(parts[1], "base64").toString("utf-8"),
+    ) as { exp: number };
+
+    // Check if the token is expired
+    return payload.exp && Date.now() >= payload.exp * 1000;
   }
 
   private async getTaxoEntry<T extends TaxoNode>(
     taxo: string,
     entry: string,
   ): Promise<T> {
-    const res = await fetch(
+    const res = await this.fetch(
       `${this.baseUrl}/api/v2/taxonomy?tagtype=${taxo}&tags=${entry}`,
-      { headers: { "User-Agent": this.customUserAgent } },
     );
 
     return (await res.json()) as T;
