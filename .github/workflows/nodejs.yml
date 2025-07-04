@@ -25,6 +25,9 @@ jobs:
           node-version: ${{ matrix.node-version }}
           cache: "yarn"
 
+      - run: npm install -g corepack --force
+      - run: corepack enable
+
       # Install dependencies
       - name: Install dependencies
         run: yarn install --immutable
