@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    name: Build, Lint, Format, Tests and Build Docs
+    name: Build and Test
     runs-on: ubuntu-latest
 
     strategy:
