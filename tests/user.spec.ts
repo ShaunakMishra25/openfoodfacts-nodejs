@@ -21,7 +21,7 @@ describe("createUser", () => {
 
     const params = {
       username: "testuser123",
-      password: "dummy_password_for_tests",
+      password: process.env.TEST_USER_PASSWORD || "TestPass1234!",
       email: "test@example.com",
     };
 
